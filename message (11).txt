@@ -8712,19 +8712,31 @@ do
                 local packet = args[1]
                 
                 if packet == "ShootGun" then
-                    if ragebot_aim_position then
+                    if ragebot_aim_position and ragebot_target and ragebot_target[4] then
                         local handle = args[2]
+                        if not handle then return old_namecall(self, ...) end
+                        local hb = flags["ragebot_hitbox"]
+                        local hb_name = (type(hb) == "table" and hb[1]) or (type(hb) == "string" and hb) or "head"
+                        local part = ragebot_target[4][hb_name == "head" and "Head" or "UpperTorso"] or ragebot_target[4]["Head"] or ragebot_target[4]["UpperTorso"]
+                        if not part or not part.Parent then return old_namecall(self, ...) end
 
                         local pos = ragebot_aim_position + vector3_new(math_random(101,105)/100,0.008,-0.008)
-                        local origin = local_server_position["p"] + vector3_new(0.004,3.0208,-0.048)
-                
-                        local dir = (origin-pos)["Unit"]
-                        local Magnitude = dir["Magnitude"]
-                        local part = ragebot_target[4][flags["ragebot_hitbox"][1] == "head" and "Head" or "UpperTorso"]
-                        
-                        spawn(get_bullet_result, ragebot_target[2], part)
+                        local orig_p = local_server_position and local_server_position["p"]
+                        if not orig_p or (orig_p.X == 0 and orig_p.Y == 0 and orig_p.Z == 0) then
+                            local hrp = local_parts and local_parts["HumanoidRootPart"]
+                            local head = local_parts and local_parts["Head"]
+                            orig_p = (head and head.Position) or (hrp and (hrp.Position + vector3_new(0, 1.5, 0))) or (handle.Position)
+                        end
+                        local origin = orig_p + vector3_new(0.004, 3.0208, -0.048)
 
-                        return old_namecall(self, "ShootGun", handle, origin, pos, part, (Magnitude <= 0 or Magnitude ~= Magnitude) and (handle["Position"]-pos)["Unit"] or dir)
+                        local dir = (origin - pos).Unit
+                        local mag = dir.Magnitude
+                        if mag <= 0 or mag ~= mag then
+                            dir = (handle.Position - pos).Unit
+                        end
+
+                        spawn(get_bullet_result, ragebot_target[2], part)
+                        return old_namecall(self, "ShootGun", handle, origin, pos, part, dir)
                     end
 
                     local part = args[5]
